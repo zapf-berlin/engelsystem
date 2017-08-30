@@ -68,7 +68,25 @@ function verify_password($password, $salt, $uid = false) {
     // we duplicate the query from the above set_password() function to have the extra safety of checking the old hash
     sql_query("UPDATE `User` SET `Passwort` = '" . sql_escape(crypt($password, $crypt_alg . '$' . generate_salt() . '$')) . "' WHERE `UID` = " . intval($uid) . " AND `Passwort` = '" . sql_escape($salt) . "' LIMIT 1");
   }
+
+  //try ldap auth
+  if (!$correct) {
+    if (verify_ldap_password()) {
+      $correct=true;
+    }
+  }
+  
   return $correct;
+}
+
+function verify_ldap_password() {
+  global $ldap_host, $ldap_basedn;
+  $ldaph=ldap_connect($ldap_host);
+  ldap_set_option($ldaph, LDAP_OPT_PROTOCOL_VERSION, 3);
+  if(@ldap_bind($ldaph,"uid=".$_REQUEST['nick'].",ou=people,".$ldap_basedn,$_REQUEST['password'])) {
+    return true;
+  }
+  return false;
 }
 
 function privileges_for_user($user_id) {
