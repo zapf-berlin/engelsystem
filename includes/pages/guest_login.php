@@ -14,7 +14,7 @@ function logout_title() {
 
 // Engel registrieren
 function guest_register() {
-  global $tshirt_sizes, $enable_tshirt_size, $default_theme, $user, $min_password_length;
+    global $tshirt_sizes, $enable_tshirt_size, $default_theme, $user, $min_password_length, $ldap_host, $ldap_basedn, $ldap_userou;
   
   $event_config = EventConfig();
   
@@ -79,15 +79,19 @@ function guest_register() {
         $msg .= error(_("Please select your shirt size."), true);
       }
     }
-    
-    if (isset($_REQUEST['password']) && strlen($_REQUEST['password']) >= $min_password_length) {
-      if ($_REQUEST['password'] != $_REQUEST['password2']) {
-        $valid = false;
-        $msg .= error(_("Your passwords don't match."), true);
-      }
+
+    if (isset($_SESSION['ldap_user'])) {
+      $_REQUEST['password'] = "ldap-auth";
     } else {
-      $valid = false;
-      $msg .= error(sprintf(_("Your password is too short (please use at least %s characters)."), $min_password_length), true);
+      if (isset($_REQUEST['password']) && strlen($_REQUEST['password']) >= $min_password_length) {
+        if ($_REQUEST['password'] != $_REQUEST['password2']) {
+          $valid = false;
+          $msg .= error(_("Your passwords don't match."), true);
+        }
+      } else {
+        $valid = false;
+        $msg .= error(sprintf(_("Your password is too short (please use at least %s characters)."), $min_password_length), true);
+      }
     }
     
     $selected_angel_types = [];
@@ -179,7 +183,19 @@ function guest_register() {
       redirect('?');
     }
   }
-  
+  $password_required=true;
+  if (isset($_SESSION['ldap_user'])) {
+      $nick=$_SESSION['ldap_user'];
+      $ldaph=ldap_connect($ldap_host);
+      ldap_set_option($ldaph, LDAP_OPT_PROTOCOL_VERSION, 3);
+      $r = ldap_search($ldaph,$ldap_userou.",".$ldap_basedn,"(&(objectClass=inetOrgPerson)(uid=".ldap_escape($nick)."))",array("sn","givenName","mail"));
+      $entries = ldap_get_entries($ldaph,$r);
+      $prename = $entries[0]['givenname'][0];
+      $lastname = $entries[0]['sn'][0];
+      $mail = $entries[0]['mail'][0];
+      $password_required=false;
+  }
+    
   $buildup_start_date = time();
   $teardown_end_date = null;
   if ($event_config != null) {
@@ -216,10 +232,10 @@ function guest_register() {
                   ]),
                   div('row', [
                       div('col-sm-6', [
-                          form_password('password', _("Password") . ' ' . entry_required()) 
+                          $password_required ? form_password('password', _("Password") . ' ' . entry_required()) : ''
                       ]),
                       div('col-sm-6', [
-                          form_password('password2', _("Confirm password") . ' ' . entry_required()) 
+                          $password_required ? form_password('password2', _("Confirm password") . ' ' . entry_required()) : ''
                       ]) 
                   ]),
                   form_checkboxes('angel_types', _("What do you want to do?") . sprintf(" (<a href=\"%s\">%s</a>)", page_link_to('angeltypes') . '&action=about', _("Description of job types")), $angel_types, $selected_angel_types),
@@ -234,12 +250,12 @@ function guest_register() {
                   div('row', [
                   ]),
                   div('row', [
-                      div('col-sm-4', [
-                          $enable_tshirt_size ? form_select('tshirt_size', _("Shirt size") . ' ' . entry_required(), $tshirt_sizes, $tshirt_size) : '' 
-                      ]),
                       div('col-sm-6', [
                           form_text('hometown', _("Hometown") . ' ' . entry_required(), $hometown) 
-                      ]) 
+                      ]),
+                      div('col-sm-4', [
+                          $enable_tshirt_size ? form_select('tshirt_size', _("Shirt size") . ' ' . entry_required(), $tshirt_sizes, $tshirt_size) : '' 
+                      ])
                   ]),
                   form_info(entry_required() . ' = ' . _("Entry required!")) 
               ]) 
@@ -282,6 +298,10 @@ function guest_login() {
           error(_("Please enter a password."));
         }
       } else {
+        if (verify_ldap_password()) {
+          $_SESSION['ldap_user']=$_REQUEST['nick'];
+          redirect(page_link_to('register'));
+        }  
         $valid = false;
         error(_("No user was found with that Nickname. Please try again. If you are still having problems, ask a Dispatcher."));
       }

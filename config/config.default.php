@@ -66,4 +66,9 @@ $config = [
     'pw' => "",
     'db' => "engelsystem"
 ];
+
+// LDAP-Connection Settings
+$ldap_host = "ldap://localhost";
+$ldap_basedn = "dc=example,dc=com";
+$ldap_userou = "ou=users";
 ?>
