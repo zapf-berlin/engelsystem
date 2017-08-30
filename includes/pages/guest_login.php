@@ -14,7 +14,7 @@ function logout_title() {
 
 // Engel registrieren
 function guest_register() {
-    global $tshirt_sizes, $enable_tshirt_size, $default_theme, $user, $min_password_length, $ldap_host, $ldap_basedn;
+    global $tshirt_sizes, $enable_tshirt_size, $default_theme, $user, $min_password_length, $ldap_host, $ldap_basedn, $ldap_userou;
   
   $event_config = EventConfig();
   
@@ -80,8 +80,8 @@ function guest_register() {
       }
     }
 
-    if (isset($_SESSION['ldap_pass'])) {
-      $_REQUEST['password'] = $_SESSION['ldap_pass'];
+    if (isset($_SESSION['ldap_user'])) {
+      $_REQUEST['password'] = "ldap-auth";
     } else {
       if (isset($_REQUEST['password']) && strlen($_REQUEST['password']) >= $min_password_length) {
         if ($_REQUEST['password'] != $_REQUEST['password2']) {
@@ -188,7 +188,7 @@ function guest_register() {
       $nick=$_SESSION['ldap_user'];
       $ldaph=ldap_connect($ldap_host);
       ldap_set_option($ldaph, LDAP_OPT_PROTOCOL_VERSION, 3);
-      $r = ldap_search($ldaph,"ou=users,".$ldap_basedn,"(&(objectClass=inetOrgPerson)(uid=".$nick."))",array("sn","givenName","mail"));
+      $r = ldap_search($ldaph,$ldap_userou.",".$ldap_basedn,"(&(objectClass=inetOrgPerson)(uid=".ldap_escape($nick)."))",array("sn","givenName","mail"));
       $entries = ldap_get_entries($ldaph,$r);
       $prename = $entries[0]['givenname'][0];
       $lastname = $entries[0]['sn'][0];
@@ -300,7 +300,6 @@ function guest_login() {
       } else {
         if (verify_ldap_password()) {
           $_SESSION['ldap_user']=$_REQUEST['nick'];
-          $_SESSION['ldap_pass']=$_REQUEST['password'];
           redirect(page_link_to('register'));
         }  
         $valid = false;

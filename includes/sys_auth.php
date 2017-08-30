@@ -40,7 +40,11 @@ function generate_salt($length = 16) {
  */
 function set_password($uid, $password) {
   global $crypt_alg;
-  $result = sql_query("UPDATE `User` SET `Passwort` = '" . sql_escape(crypt($password, $crypt_alg . '$' . generate_salt(16) . '$')) . "', `password_recovery_token`=NULL WHERE `UID` = " . intval($uid) . " LIMIT 1");
+  if (isset($_SESSION['ldap_user']) and $password == 'ldap-auth') {
+    $result = sql_query("UPDATE `User` SET `Passwort` = 'ldap-auth', `password_recovery_token`=NULL WHERE `UID` = " . intval($uid) . " LIMIT 1");
+  } else {  
+    $result = sql_query("UPDATE `User` SET `Passwort` = '" . sql_escape(crypt($password, $crypt_alg . '$' . generate_salt(16) . '$')) . "', `password_recovery_token`=NULL WHERE `UID` = " . intval($uid) . " LIMIT 1");
+  }
   if ($result === false) {
     engelsystem_error('Unable to update password.');
   }
@@ -80,10 +84,10 @@ function verify_password($password, $salt, $uid = false) {
 }
 
 function verify_ldap_password() {
-  global $ldap_host, $ldap_basedn;
+  global $ldap_host, $ldap_basedn ,$ldap_userou;
   $ldaph=ldap_connect($ldap_host);
   ldap_set_option($ldaph, LDAP_OPT_PROTOCOL_VERSION, 3);
-  if(@ldap_bind($ldaph,"uid=".$_REQUEST['nick'].",ou=users,".$ldap_basedn,$_REQUEST['password'])) {
+  if(@ldap_bind($ldaph,"uid=".ldap_escape($_REQUEST['nick']).",".$ldap_userou.",".$ldap_basedn,$_REQUEST['password'])) {
     return true;
   }
   return false;
