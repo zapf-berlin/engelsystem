@@ -83,7 +83,7 @@ function verify_ldap_password() {
   global $ldap_host, $ldap_basedn;
   $ldaph=ldap_connect($ldap_host);
   ldap_set_option($ldaph, LDAP_OPT_PROTOCOL_VERSION, 3);
-  if(@ldap_bind($ldaph,"uid=".$_REQUEST['nick'].",ou=people,".$ldap_basedn,$_REQUEST['password'])) {
+  if(@ldap_bind($ldaph,"uid=".$_REQUEST['nick'].",ou=users,".$ldap_basedn,$_REQUEST['password'])) {
     return true;
   }
   return false;

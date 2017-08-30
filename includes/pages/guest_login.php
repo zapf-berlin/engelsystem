@@ -188,7 +188,7 @@ function guest_register() {
       $nick=$_SESSION['ldap_user'];
       $ldaph=ldap_connect($ldap_host);
       ldap_set_option($ldaph, LDAP_OPT_PROTOCOL_VERSION, 3);
-      $r = ldap_search($ldaph,"ou=people,".$ldap_basedn,"(&(objectClass=inetOrgPerson)(uid=".$nick."))",array("sn","givenName","mail"));
+      $r = ldap_search($ldaph,"ou=users,".$ldap_basedn,"(&(objectClass=inetOrgPerson)(uid=".$nick."))",array("sn","givenName","mail"));
       $entries = ldap_get_entries($ldaph,$r);
       $prename = $entries[0]['givenname'][0];
       $lastname = $entries[0]['sn'][0];
